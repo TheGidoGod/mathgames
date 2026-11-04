@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Menu</title>
+<style>
+:root{
+  --bg:#f5f4f0; --surface:#ffffff; --text:#1c1b19; --muted:#6f6c66; --line:#e4e1da;
+  --accent:#4f46e5; --accent2:#c026d3; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(0,0,0,.06);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#121214; --surface:#1b1b1f; --text:#f1f0ee; --muted:#9b98a1; --line:#2b2b31;
+    --accent:#818cf8; --accent2:#e879f9; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121214; --surface:#1b1b1f; --text:#f1f0ee; --muted:#9b98a1; --line:#2b2b31;
+  --accent:#818cf8; --accent2:#e879f9; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html{color-scheme:light dark}
+body{margin:0;background:var(--bg);color:var(--text);
+  font:16px/1.5 "Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  background-image:radial-gradient(900px 400px at 10% -10%,color-mix(in srgb,var(--accent) 14%,transparent),transparent),
+                   radial-gradient(700px 400px at 100% 0,color-mix(in srgb,var(--accent2) 10%,transparent),transparent);
+  background-repeat:no-repeat;min-height:100vh}
+.wrap{max-width:1040px;margin:0 auto;padding:56px 24px 80px}
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:28px}
+h1{margin:0;font-size:clamp(28px,5vw,42px);letter-spacing:-.03em;line-height:1.1}
+.sub{margin:6px 0 0;color:var(--muted)}
+.tools{display:flex;gap:10px;align-items:center;width:100%;margin-bottom:8px}
+.search{flex:1;display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);
+  border-radius:14px;padding:0 14px;box-shadow:var(--shadow)}
+.search:focus-within{border-color:var(--accent)}
+.search input{flex:1;border:0;outline:0;background:none;color:var(--text);font:inherit;padding:13px 0}
+.search svg{width:18px;height:18px;color:var(--muted);flex:none}
+.btn{background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:14px;
+  padding:12px 14px;font:inherit;cursor:pointer;box-shadow:var(--shadow)}
+.btn:hover{border-color:var(--accent)}
+h2{font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:36px 0 14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.card{display:flex;gap:14px;align-items:flex-start;text-decoration:none;color:inherit;background:var(--surface);
+  border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:var(--shadow);
+  transition:transform .15s ease,border-color .15s ease}
+.card:hover,.card:focus-visible{transform:translateY(-3px);border-color:var(--accent);outline:0}
+.ico{flex:none;width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:20px;font-weight:700;
+  color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent2))}
+.card b{display:block;font-size:16px;letter-spacing:-.01em}
+.card span{display:block;color:var(--muted);font-size:14px;margin-top:2px}
+.empty,.drop{text-align:center;color:var(--muted);padding:48px 20px;border:2px dashed var(--line);border-radius:18px;margin-top:24px}
+.drop.over{border-color:var(--accent);color:var(--text)}
+.drop code{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1 id="title">Menu</h1>
+      <p class="sub" id="subtitle"></p>
+    </div>
+  </header>
+
+  <div class="tools">
+    <label class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="Search pages…" autocomplete="off">
+    </label>
+    <button class="btn" id="theme" title="Toggle theme" aria-label="Toggle theme">◐</button>
+  </div>
+
+  <main id="out"></main>
+
+  <div class="drop" id="drop" hidden>
+    <p><b>Couldn’t read <code>menu.txt</code> automatically.</b></p>
+    <p>Browsers block this when a page is opened straight from disk.<br>
+       Drop your <code>menu.txt</code> here, or <label style="color:var(--accent);cursor:pointer;text-decoration:underline">choose the file<input id="file" type="file" accept=".txt,text/plain" hidden></label>.<br>
+       Or serve the folder: <code>python -m http.server</code></p>
+  </div>
+  <div class="empty" id="empty" hidden>No pages match.</div>
+</div>
+
+<script>
+const CONFIG_FILE = "menu.txt";
+const $ = id => document.getElementById(id);
+let data = {title:"Menu", subtitle:"", sections:[]};
+
+function parse(text){
+  const d = {title:"Menu", subtitle:"", sections:[]};
+  let cur = {name:"", items:[]};
+  d.sections.push(cur);
+  for (let raw of text.replace(/^\uFEFF/,"").split(/\r?\n/)){
+    const line = raw.trim();
+    if (!line || line.startsWith("#")) continue;
+    if (line.startsWith("@")){
+      const m = line.match(/^@(\w+)\s*=\s*(.*)$/);
+      if (m && (m[1] === "title" || m[1] === "subtitle")) d[m[1]] = m[2];
+      continue;
+    }
+    if (line.startsWith("##")){
+      cur = {name: line.replace(/^#+\s*/,""), items:[]};
+      d.sections.push(cur);
+      continue;
+    }
+    const [name, url, desc, icon] = line.split("|").map(s => s.trim());
+    if (!name || !url) continue;
+    cur.items.push({name, url, desc: desc || "", icon: icon || ""});
+  }
+  d.sections = d.sections.filter(s => s.items.length);
+  return d;
+}
+
+function render(){
+  const term = $("q").value.trim().toLowerCase();
+  const out = $("out");
+  out.textContent = "";
+  let shown = 0;
+  for (const s of data.sections){
+    const items = s.items.filter(i => !term || (i.name + " " + i.desc + " " + s.name).toLowerCase().includes(term));
+    if (!items.length) continue;
+    if (s.name){ const h = document.createElement("h2"); h.textContent = s.name; out.append(h); }
+    const g = document.createElement("div"); g.className = "grid";
+    for (const i of items){
+      const a = document.createElement("a");
+      a.className = "card";
+      a.href = /^\s*javascript:/i.test(i.url) ? "#" : i.url;
+      a.target = "_blank"; a.rel = "noopener";
+      const ico = document.createElement("div"); ico.className = "ico";
+      ico.textContent = i.icon || i.name.charAt(0).toUpperCase();
+      const box = document.createElement("div");
+      const b = document.createElement("b"); b.textContent = i.name;
+      box.append(b);
+      if (i.desc){ const sp = document.createElement("span"); sp.textContent = i.desc; box.append(sp); }
+      a.append(ico, box); g.append(a); shown++;
+    }
+    out.append(g);
+  }
+  $("empty").hidden = shown > 0 || !data.sections.length;
+}
+
+function apply(text){
+  data = parse(text);
+  $("title").textContent = data.title;
+  $("subtitle").textContent = data.subtitle;
+  document.title = data.title;
+  $("drop").hidden = true;
+  render();
+}
+
+async function load(){
+  try{
+    const r = await fetch(CONFIG_FILE + "?t=" + Date.now(), {cache:"no-store"});
+    if (!r.ok) throw 0;
+    apply(await r.text());
+  }catch(e){ $("drop").hidden = false; }
+}
+
+function readFile(f){ if (f) f.text().then(apply); }
+$("file").onchange = e => readFile(e.target.files[0]);
+const drop = $("drop");
+["dragover","dragenter"].forEach(t => document.addEventListener(t, e => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave","drop"].forEach(t => document.addEventListener(t, () => drop.classList.remove("over")));
+document.addEventListener("drop", e => { e.preventDefault(); readFile(e.dataTransfer.files[0]); });
+
+$("q").addEventListener("input", render);
+$("theme").onclick = () => {
+  const root = document.documentElement;
+  const dark = getComputedStyle(root).colorScheme && matchMedia("(prefers-color-scheme: dark)").matches;
+  const now = root.dataset.theme || (dark ? "dark" : "light");
+  root.dataset.theme = now === "dark" ? "light" : "dark";
+};
+load();
+</script>
+</body>
+</html>

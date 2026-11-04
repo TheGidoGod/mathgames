@@ -1,0 +1,5 @@
+@title = Mathematics Games
+@subtitle = Fun maths games to play!
+
+## Games
+Math Rush 3D | racing.html | Fun racing game with math problems | 🏎️
