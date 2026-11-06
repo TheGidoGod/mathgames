@@ -83,6 +83,8 @@ body[data-ph=title] #mute,body[data-ph=over] #mute{display:block}
 #dots i{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.2)}#dots i.on{background:var(--c);box-shadow:0 0 8px var(--c)}
 .tn{display:flex;gap:10px;justify-content:center}
 .sk{margin-top:12px;background:none;border:0;color:#fff;opacity:.55;font:inherit;font-size:.78rem;letter-spacing:.08em;cursor:pointer;text-decoration:underline}
+#apBtn{position:fixed;right:10px;top:calc(72px + env(safe-area-inset-top,0px));z-index:7;display:none;padding:6px 12px;font-size:.7rem;backdrop-filter:blur(6px)}
+body[data-ph=race] #apBtn,body[data-ph=countdown] #apBtn{display:block}
 </style>
 </head>
 <body data-ph="title">
@@ -101,14 +103,16 @@ body[data-ph=title] #mute,body[data-ph=over] #mute{display:block}
   <div id="tb"></div><div id="ag"></div>
 </div></div>
 <button id="mute" aria-label="Toggle sound">&#9835;</button>
+<button class="chip" id="apBtn">🤖 Auto: OFF</button>
 
 <div id="title" class="ov v"><div class="card">
   <h1 class="logo">MATH RUSH</h1><div class="sub">3D · NEON GRAND PRIX</div>
   <p>Solve equations to fire your nitro. Steer through traffic, grab coins and hearts, and beat the pack to the finish line.</p>
   <div class="ch" id="diff"><button class="chip" data-d="easy">Easy</button><button class="chip on" data-d="normal">Normal</button><button class="chip" data-d="hard">Hard</button></div>
+  <div class="ch"><button class="chip" id="autoChip">Autopilot: Off</button></div>
   <button class="btn" id="go">Start Race</button> <button class="btn alt" id="how">How to Play</button>
   <div class="hint" id="best">Best score: 0</div>
-  <div class="hint">← → / A D steer · 1–4 answer · on touch, tap the left or right of the road</div>
+  <div class="hint">← → / A D steer · 1–4 answer · on touch, tap the left or right of the road · T toggles autopilot</div>
 </div></div>
 <div id="tut" class="ov"><div class="card">
   <div id="tv" class="tv"></div><h2 id="th"></h2><div id="tb2"></div>
@@ -198,7 +202,7 @@ const fin=new THREE.Group();{const ck=tex(128,32,(g,w,h)=>{for(let y=0;y<4;y++)f
 /* ---------- game state ---------- */
 const L=[-3.2,0,3.2],PZ=8.5,LEN=1600,RN=['Blaze','Jet','Nova','Velo','Rex'],RC=[0xff4d6d,0xffd166,0x4da3ff,0xb28cff,0xff9a3c];
 const D={easy:{pace:.88,q:0,t:11},normal:{pace:1,q:1,t:9},hard:{pace:1.1,q:2,t:7}};let diff='normal';
-const G={phase:'title',score:0,coins:0,speed:1,boost:0,lives:3,dist:0,t:0,lane:1,x:0,streak:0,inv:0,shake:0,cheer:0,qt:0,qLock:true,items:[],rivals:[],q:null,spawn:1,cd:0,cdN:0,ws:16,rank:6};
+const G={phase:'title',score:0,coins:0,speed:1,boost:0,lives:3,dist:0,t:0,lane:1,x:0,streak:0,inv:0,shake:0,cheer:0,qt:0,qLock:true,items:[],rivals:[],q:null,spawn:1,cd:0,cdN:0,ws:16,rank:6,auto:false,apH:0,apT:0};
 G.rivals=RN.map((n,i)=>{const m=makeCar(RC[i]);m.add(nameTag(n));m.visible=false;scene.add(m);const d=document.createElement('div');d.className='dot';d.style.color='#'+RC[i].toString(16).padStart(6,'0');$('track').appendChild(d);return{m,n,d,p:0,lane:L[i%3],pace:56+i*2.5,ph:R(0,6)}});
 const pd=document.createElement('div');pd.className='dot';pd.id='pd';$('track').appendChild(pd);
 const toast=(t,c)=>{const e=$('toast');e.textContent=t;e.style.color=c||'#fff';e.classList.remove('s');void e.offsetWidth;e.classList.add('s')};
@@ -228,7 +232,24 @@ function spawnStuff(){const r=Math.random(),z=-140;
 if(r<.62){const n=Math.random()<.4?2:1,ls=[0,1,2].sort(()=>Math.random()-.5).slice(0,n);ls.forEach(l=>{const m=mkBarrier();m.position.set(L[l],0,z);scene.add(m);G.items.push({m,t:'b',l})})}
 else if(r<.93){const l=RI(0,2);for(let i=0;i<5;i++){const m=new THREE.Mesh(coinG,coinM);m.rotation.x=Math.PI/2;const g=new THREE.Group();g.add(m);g.position.set(L[l],1.1,z-i*3.2);scene.add(g);G.items.push({m:g,t:'c',l})}}
 else if(G.lives<3){const m=new THREE.Mesh(heartG,heartM);m.scale.setScalar(1.3);const g=new THREE.Group();g.add(m);const l=RI(0,2);g.position.set(L[l],1.4,z);scene.add(g);G.items.push({m:g,t:'h',l})}}
-function move(l){G.lane=cl(l,0,2)}
+function move(l){if(G.auto)G.apH=1.2;G.lane=cl(l,0,2)}
+function setAuto(v){G.auto=v;G.apH=0;try{localStorage.setItem('mr-auto',v?'1':'0')}catch(e){}
+$('autoChip').classList.toggle('on',v);$('autoChip').textContent='Autopilot: '+(v?'On':'Off');$('apBtn').classList.toggle('on',v);$('apBtn').textContent=v?'🤖 Auto: ON':'🤖 Auto: OFF'}
+/* autopilot: plans the safest lane sequence over the next ~2.4s (accounts for lane-change time), grabbing coins and hearts when safe; manual steering overrides it briefly */
+function autoSteer(dt){G.apH=Math.max(0,G.apH-dt);if(G.apH>0)return;
+const ws=Math.max(G.ws,24),N=40,h=.06,span=ws*N*h+8,B=[],Rw=[],bar=[[],[],[]],pk=[[],[],[]];
+G.items.forEach(it=>{const d=PZ-it.m.position.z;if(d<-4||d>span)return;if(it.t==='b')bar[it.l].push(d);else if(it.t==='c')pk[it.l].push([d,.6]);else if(it.t==='h'&&G.lives<3)pk[it.l].push([d,6])});
+for(let k=0;k<=N;k++){const z=ws*k*h,b=[0,0,0],r=[0,0,0];for(let l=0;l<3;l++){if(k*h>=G.inv)for(const d of bar[l])if(d-2.9<=z&&d+2.9>=z-ws*h){b[l]=1;break}for(const q of pk[l])if(Math.abs(q[0]-z)<=ws*h/2)r[l]+=q[1]}B.push(b);Rw.push(r)}
+let xl=0,bd=1e9;for(let l=0;l<3;l++){const e=Math.abs(L[l]-G.x);if(e<bd){bd=e;xl=l}}
+let cost=[1e9,1e9,1e9];cost[xl]=0;const from=[];
+for(let k=1;k<=N;k++){const nc=[1e9,1e9,1e9],fr=[0,0,0];
+for(let l=0;l<3;l++)for(let p=Math.max(0,l-1);p<=Math.min(2,l+1);p++){if(cost[p]>=1e9)continue;
+let v=cost[p]+(p!==l?.2:0)-Rw[k][l];if(B[k][l])v+=1000;if(p!==l&&B[k][p])v+=1000;if(k===1&&l!==G.lane)v+=.3;
+if(v<nc[l]){nc[l]=v;fr[l]=p}}
+cost=nc;from.push(fr)}
+let l=0;for(let i=1;i<3;i++)if(cost[i]<cost[l])l=i;
+for(let i=N-1;i>=1;i--)l=from[i][l];
+G.lane=l}
 /* ---------- main update ---------- */
 let hsN='';
 function update(dt){G.t+=dt;const ph=G.phase,race=ph==='race';
@@ -244,6 +265,7 @@ G.rivals.forEach(r=>{const gap=r.p-G.dist;r.p=Math.min(LEN+30,r.p+(r.pace*D[diff
 const rk=1+G.rivals.filter(r=>r.p>G.dist).length;if(rk<G.rank&&G.rank<=6&&G.t>0){G.cheer=1;confetti();sfx.cheer();const o=G.rivals.filter(r=>r.p<=G.dist);toast(rk===1?'You’re in the lead!':`Overtook! P${rk}`,'#ffd166')}G.rank=rk;
 if(G.dist>=LEN||G.rivals.every(r=>r.p>=LEN))endRace('finish')}
 /* player */
+if(race&&G.auto)autoSteer(dt);
 const tx=L[G.lane];G.x+=(tx-G.x)*Math.min(1,dt*10);const sd=tx-G.x;
 if(ph==='title'){player.position.set(0,0,PZ);player.rotation.set(0,0,0)}else{player.position.set(G.x,.05+Math.sin(G.t*30)*.015*G.speed,PZ);player.rotation.z=-sd*.07;player.rotation.y=-sd*.06}
 player.visible=!(G.inv>0&&Math.floor(G.t*14)%2);
@@ -282,7 +304,7 @@ $('st').textContent=G.streak>1?`STREAK ×${G.streak}`:'';
 const h=Array.from({length:3},(_,i)=>`<span class="${i<G.lives?'':'off'}">♥</span>`).join('');if(h!==hsN){hsN=h;$('hearts').innerHTML=h}}
 /* ---------- tutorial ---------- */
 const TUT=[
-{h:'Steer your car',v:'<div class="ln"><span class="x"></span></div><div class="ln me">🏎️</div><div class="ln"></div>',b:'<p>The road has <b>3 lanes</b>. Switch lanes with <b>← →</b> or <b>A / D</b>. On a phone or tablet, tap the <b>left, middle or right</b> of the screen.</p>'},
+{h:'Steer your car',v:'<div class="ln"><span class="x"></span></div><div class="ln me">🏎️</div><div class="ln"></div>',b:'<p>The road has <b>3 lanes</b>. Switch lanes with <b>← →</b> or <b>A / D</b>. On a phone or tablet, tap the <b>left, middle or right</b> of the screen. Want to focus on the maths? Turn on <b>Autopilot</b> (or press <b>T</b>) and the car steers itself.</p>'},
 {h:'Solve to go faster',v:'<div class="ab"><i>1</i>12</div><div class="ab"><i>2</i>14</div><div class="ab"><i>3</i>16</div><div class="ab"><i>4</i>18</div>',b:'<p>A sum appears at the bottom. Tap the right answer or press <b>1–4</b> before the yellow timer runs out. Correct answers fire <b>nitro</b>, and streaks give bigger boosts.</p>'},
 {h:'Dodge and collect',v:'🚧 <small>−1 ♥</small> 🪙 <small>+score</small> <span style="color:var(--bad)">♥</span> <small>+1 ♥</small>',b:'<ul><li>🚧 <b>Barriers</b> cost a life. Switch lanes to dodge.</li><li>🪙 <b>Coins</b> add to your score.</li><li>♥ <b>Hearts</b> restore a life (max 3).</li><li>🛡️ With a <b>pink glow</b> (lots of nitro), you smash barriers safely.</li></ul>'},
 {h:'Win the race',v:'🏁 <small>Beat 5 rivals to the finish</small>',b:'<p>Watch the <b>track bar</b> at the top to see where everyone is. A wrong or late answer costs a life <b>and</b> some nitro. Lose all 3 lives and you crash out. Good luck!</p>'}];
@@ -295,16 +317,18 @@ function tutNext(){if(ti<TUT.length-1){ti++;tutShow()}else tutClose(true)}
 /* ---------- input + boot ---------- */
 addEventListener('keydown',e=>{const k=e.key.toLowerCase();
 if($('tut').classList.contains('v')){if(k==='arrowright'||k==='enter'||k===' '){e.preventDefault();tutNext()}else if(k==='arrowleft'&&ti){ti--;tutShow()}else if(k==='escape')tutClose(false);return}if(G.phase==='title'&&(k==='enter'||k===' '))startRace();
-if(G.phase==='over'&&k==='enter')startRace();if(G.phase!=='race'&&G.phase!=='countdown')return;
+if(G.phase==='over'&&k==='enter')startRace();if(k==='t')setAuto(!G.auto);if(G.phase!=='race'&&G.phase!=='countdown')return;
 if(k==='arrowleft'||k==='a')move(G.lane-1);if(k==='arrowright'||k==='d')move(G.lane+1);
 if(k>='1'&&k<='4'){const b=$('ag').children[+k-1];if(b)b.click()}});
 const ptr=e=>{if(G.phase==='race'||G.phase==='countdown'){if(e.type==='pointermove'&&e.pointerType==='mouse'&&!e.buttons)return;move(Math.floor(e.clientX/innerWidth*3))}};
 $('c').addEventListener('pointerdown',ptr);$('c').addEventListener('pointermove',ptr);
 $('how').onclick=tutOpen;$('tn').onclick=tutNext;$('tp').onclick=()=>{if(ti){ti--;tutShow()}};$('tskip').onclick=()=>tutClose(false);
 $('go').onclick=startRace;$('again').onclick=startRace;$('menu').onclick=()=>{$('end').classList.remove('v');$('title').classList.add('v');setPh('title');G.rivals.forEach(r=>r.m.visible=false);G.items.forEach(i=>scene.remove(i.m));G.items=[]};
-document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{diff=c.dataset.d;document.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x===c))});
+document.querySelectorAll('#diff .chip').forEach(c=>c.onclick=()=>{diff=c.dataset.d;document.querySelectorAll('#diff .chip').forEach(x=>x.classList.toggle('on',x===c))});
 $('mute').onclick=()=>{muted=!muted;if(mst)mst.gain.value=muted?0:.5;$('mute').style.opacity=muted?.4:1};
 $('best').textContent='Best score: '+best;
+$('autoChip').onclick=e=>{setAuto(!G.auto);e.currentTarget.blur()};$('apBtn').onclick=e=>{setAuto(!G.auto);e.currentTarget.blur()};
+let autoSaved=false;try{autoSaved=localStorage.getItem('mr-auto')==='1'}catch(e){}setAuto(autoSaved);
 let seen=0;try{seen=localStorage.getItem('mr-tut')}catch(e){}if(!seen)tutOpen();
 function resize(){rd.setSize(innerWidth,innerHeight,false);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix()}
 addEventListener('resize',resize);resize();
