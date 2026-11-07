@@ -153,7 +153,7 @@ body.no-track #tw{visibility:hidden}
 
 <div id="title" class="ov v"><div class="card">
   <h1 class="logo">MATH RUSH</h1><div class="sub">3D · NEON GRAND PRIX</div>
-  <p>Solve equations to fire your nitro. Steer through traffic, grab coins and hearts, and beat the pack to the finish line.</p>
+  <p>Solve equations to fire your nitro. Steer through the lanes, grab coins and hearts, and beat the pack to the finish line.</p>
   <div class="ch" id="diff"><button class="chip" data-d="easy">Easy</button><button class="chip on" data-d="normal">Normal</button><button class="chip" data-d="hard">Hard</button></div>
   <div class="ch"><button class="chip" id="autoChip">Autopilot: Off</button></div>
   <button class="btn" id="go">Start Race</button> <button class="btn alt" id="how">How to Play</button> <button class="btn alt" id="setBtn">&#9881; Settings</button>
@@ -186,11 +186,11 @@ const $=id=>document.getElementById(id),R=(a,b)=>Math.random()*(b-a)+a,RI=(a,b)=
 let best=0;try{best=+localStorage.getItem('mr-best')||0}catch(e){}
 /* ---------- settings ---------- */
 const DEF={master:80,music:true,musicVol:55,sfxVol:100,engine:true,thrust:true,countdown:true,answers:true,pickups:true,crashes:true,cheers:true,jingles:true,ui:true,
-diff:'normal',autopilot:false,apCoins:true,apOverride:true,obstacles:true,obstDensity:1,coins:true,hearts:true,lives:3,timer:'normal',rivalPace:'normal',opAdd:true,opSub:true,opMul:true,opDiv:true,
+diff:'normal',autopilot:false,apCoins:true,apOverride:true,coins:true,hearts:true,lives:3,timer:'normal',rivalPace:'normal',opAdd:true,opSub:true,opMul:true,opDiv:true,
 shake:true,flash:true,speedLines:true,fovKick:true,particles:true,crowd:true,hud:true,track:true,quality:'high',carColor:0,
 touchSteer:true,kbdAnswers:true,vibrate:true};
 const S=Object.assign({},DEF),CARS=[0x5dffa0,0x5ee7ff,0xff4fd8,0xffd166],OPS=['opAdd','opSub','opMul','opDiv'],
-ENUM={diff:['easy','normal','hard'],obstDensity:[0,1,2],lives:[1,3,5],timer:['off','relaxed','normal','strict'],rivalPace:['slow','normal','fast'],quality:['low','med','high'],carColor:[0,1,2,3]};
+ENUM={diff:['easy','normal','hard'],lives:[1,3,5],timer:['off','relaxed','normal','strict'],rivalPace:['slow','normal','fast'],quality:['low','med','high'],carColor:[0,1,2,3]};
 try{const j=JSON.parse(localStorage.getItem('mr-settings')||'null');if(j&&typeof j==='object'){for(const k in DEF)if(typeof j[k]===typeof DEF[k])S[k]=j[k]}else if(localStorage.getItem('mr-auto')==='1')S.autopilot=true}catch(e){}
 for(const k in ENUM)if(!ENUM[k].includes(S[k]))S[k]=DEF[k];
 ['master','sfxVol','musicVol'].forEach(k=>S[k]=cl(+S[k]||0,0,100));
@@ -213,8 +213,7 @@ const SCH=[
  iH('Race'),iSg('diff','Difficulty',[{v:'easy',l:'Easy'},{v:'normal',l:'Normal'},{v:'hard',l:'Hard'}],'Sets how hard the sums get and how fast rivals race'),
  iSw('autopilot','Autopilot','The car steers itself so you can focus on the maths (T)'),
  iSw('apCoins','Autopilot collects coins','','autopilot'),iSw('apOverride','Manual steering takes over','Steering yourself pauses autopilot for a moment','autopilot'),
- iH('Track'),iSw('obstacles','Obstacles','Barriers that cost you a life'),iSg('obstDensity','Obstacle frequency',[{v:0,l:'Few'},{v:1,l:'Normal'},{v:2,l:'Many'}],'','obstacles'),
- iSw('coins','Coins','Collect for bonus score'),iSw('hearts','Hearts','Extra lives appear when you have been hurt'),
+ iH('Track'),iSw('coins','Coins','Collect for bonus score'),iSw('hearts','Hearts','Extra lives appear when you have been hurt'),
  iH('Rules'),iSg('lives','Starting lives',[{v:1,l:'1'},{v:3,l:'3'},{v:5,l:'5'}],'Applies from the next race'),
  iSg('timer','Answer timer',[{v:'off',l:'Off'},{v:'relaxed',l:'Relaxed'},{v:'normal',l:'Normal'},{v:'strict',l:'Strict'}],'How long you get to answer each question'),
  iSg('rivalPace','Rival speed',[{v:'slow',l:'Slow'},{v:'normal',l:'Normal'},{v:'fast',l:'Fast'}]),
@@ -228,15 +227,15 @@ const SCH=[
  iH('Input'),iSw('touchSteer','Tap or drag to steer','Tap the left, middle or right of the screen'),iSw('kbdAnswers','Number keys answer','Keys 1–4 pick an answer'),iSw('vibrate','Vibration','Buzz on crashes and wrong answers (phones)'),
  iH('Shortcuts'),{t:'keys'}]}];
 const ITEM={};SCH.forEach(t=>t.items.forEach(i=>{if(i.k)ITEM[i.k]=i}));
-const PRE=[{n:'Chill',i:'😌',v:{diff:'easy',lives:5,timer:'relaxed',rivalPace:'slow',obstDensity:0}},
-{n:'Classic',i:'🏁',v:{diff:'normal',lives:3,timer:'normal',rivalPace:'normal',obstDensity:1,obstacles:true,coins:true,hearts:true}},
-{n:'Hardcore',i:'🔥',v:{diff:'hard',lives:1,timer:'strict',rivalPace:'fast',obstDensity:2,obstacles:true}}];
+const PRE=[{n:'Chill',i:'😌',v:{diff:'easy',lives:5,timer:'relaxed',rivalPace:'slow'}},
+{n:'Classic',i:'🏁',v:{diff:'normal',lives:3,timer:'normal',rivalPace:'normal',coins:true,hearts:true}},
+{n:'Hardcore',i:'🔥',v:{diff:'hard',lives:1,timer:'strict',rivalPace:'fast'}}];
 const PREV={countdown:'beep',answers:'ok',pickups:'coin',crashes:'crash',cheers:'cheer',jingles:'win',ui:'ui',thrust:'nitro'};
 let curTab=0,hT=0,rsT=0,lastQ='';
 
 function rowHTML(it){
  if(it.t==='h')return `<h3 class="sh">${it.l}</h3>`;
- if(it.t==='pre')return `<div class="presets">${PRE.map(p=>`<button class="chip" data-pre="${p.n}">${p.i} ${p.n}</button>`).join('')}</div><small class="pnote">Quick presets for difficulty, lives, timer and obstacles</small>`;
+ if(it.t==='pre')return `<div class="presets">${PRE.map(p=>`<button class="chip" data-pre="${p.n}">${p.i} ${p.n}</button>`).join('')}</div><small class="pnote">Quick presets for difficulty, lives, timer and rivals</small>`;
  if(it.t==='keys')return `<div class="keys"><span><kbd>←</kbd><kbd>→</kbd> or <kbd>A</kbd><kbd>D</kbd> steer</span><span><kbd>1</kbd>–<kbd>4</kbd> answer</span><span><kbd>T</kbd> toggle autopilot</span><span><kbd>Esc</kbd> or <kbd>P</kbd> pause &amp; settings</span></div>`;
  const lab=`<div class="rl"><b>${it.l}</b>${it.d?`<small>${it.d}</small>`:''}</div>`,dep=it.dep?` data-dep="${it.dep}"`:'';
  if(it.t==='sw')return `<div class="row"${dep}>${lab}<button class="sw" role="switch" data-k="${it.k}" data-t="sw" aria-label="${it.l}"><i></i></button></div>`;
@@ -262,7 +261,7 @@ function setDiff(d){S.diff=d;saveS();applyAll();syncUI()}
 function applyAll(){
  applyAudio();chipDiff();
  const ml=ML();if(G.lives>ml)G.lives=ml;hsN='';
- G.items=G.items.filter(it=>{const off=(it.t==='b'&&!S.obstacles)||(it.t==='c'&&!S.coins)||(it.t==='h'&&!S.hearts);if(off)scene.remove(it.m);return !off});
+ G.items=G.items.filter(it=>{const off=(it.t==='c'&&!S.coins)||(it.t==='h'&&!S.hearts);if(off)scene.remove(it.m);return !off});
  player.userData.tint.forEach(m=>m.color.setHex(CARS[S.carColor]));
  document.body.classList.toggle('no-hud',!S.hud);document.body.classList.toggle('no-track',!S.track);
  if(S.quality!==lastQ){lastQ=S.quality;rd.setPixelRatio(S.quality==='low'?.75:S.quality==='med'?1:Math.min(devicePixelRatio,2));resize()}
@@ -418,9 +417,8 @@ else{G.score+=[1000,600,350,200,100,0][rank-1];t=rank==1?'VICTORY!':rank<=3?'POD
 G.score=Math.floor(G.score);if(G.score>best){best=G.score;try{localStorage.setItem('mr-best',best)}catch(e){}}
 $('et').textContent=t;$('es').innerHTML=msg;$('stars').textContent='★'.repeat(st)+'☆'.repeat(3-st);$('s1').textContent=G.score;$('s2').textContent=G.coins;$('s3').textContent=best;$('best').textContent='Best score: '+best;setTimeout(()=>$('end').classList.add('v'),700)}
 /* ---------- spawning ---------- */
-function spawnStuff(){const r=Math.random(),z=-140,pB=S.obstacles?[.36,.62,.82][S.obstDensity]:0;let pC=S.coins?(S.obstacles?.31:.8):0;pC=Math.max(0,Math.min(pC,.93-pB));
-if(r<pB){const n=Math.random()<(S.obstDensity===2?.6:.4)?2:1,ls=[0,1,2].sort(()=>Math.random()-.5).slice(0,n);ls.forEach(l=>{const m=mkBarrier();m.position.set(L[l],0,z);scene.add(m);G.items.push({m,t:'b',l})})}
-else if(r<pB+pC){const l=RI(0,2);for(let i=0;i<5;i++){const m=new THREE.Mesh(coinG,coinM);m.rotation.x=Math.PI/2;const g=new THREE.Group();g.add(m);g.position.set(L[l],1.1,z-i*3.2);scene.add(g);G.items.push({m:g,t:'c',l})}}
+function spawnStuff(){const r=Math.random(),z=-140;
+if(S.coins&&r<.8){const l=RI(0,2);for(let i=0;i<5;i++){const m=new THREE.Mesh(coinG,coinM);m.rotation.x=Math.PI/2;const g=new THREE.Group();g.add(m);g.position.set(L[l],1.1,z-i*3.2);scene.add(g);G.items.push({m:g,t:'c',l})}}
 else if(S.hearts&&G.lives<ML()&&r>=.93){const m=new THREE.Mesh(heartG,heartM);m.scale.setScalar(1.3);const g=new THREE.Group();g.add(m);const l=RI(0,2);g.position.set(L[l],1.4,z);scene.add(g);G.items.push({m:g,t:'h',l})}}
 function move(l){if(G.auto&&S.apOverride)G.apH=1.2;G.lane=cl(l,0,2)}
 function setAuto(v){G.auto=v;G.apH=0;S.autopilot=v;saveS();syncUI();
@@ -450,7 +448,7 @@ if(ph==='countdown'){G.cd-=dt;const n=Math.ceil(G.cd);if(n!==G.cdN&&n>0){G.cdN=n
 if(G.cd<=0){setPh('race');$('cd').innerHTML='<span>GO!</span>';sfx.beep(1);sfx.cheer();G.cheer=.8;setTimeout(()=>$('cd').classList.remove('v'),800);newQ()}}
 if(race){G.boost=Math.max(0,G.boost-5*dt);G.speed+=((.7+G.boost*.035)-G.speed)*Math.min(1,dt*1.5);G.dist+=(30+G.speed*28)*dt;G.score+=dt*8*G.speed;G.inv=Math.max(0,G.inv-dt);
 G.qt-=dt;if(!G.qLock){$('tb').style.transform=`scaleX(${cl(G.qt/G.qTot,0,1)})`;if(G.qt<=0)answer(null)}
-G.spawn-=dt;if(G.spawn<=0){spawnStuff();G.spawn=R(16,26)*[1.25,1,.8][S.obstDensity]/G.ws}
+G.spawn-=dt;if(G.spawn<=0){spawnStuff();G.spawn=R(16,26)/G.ws}
 G.rivals.forEach(r=>{const gap=r.p-G.dist;r.p=Math.min(LEN+30,r.p+(r.pace*D[diff].pace*RP[S.rivalPace]*(gap>140?.85:gap<-70?1.1:1)+Math.sin(G.t*.8+r.ph)*4)*dt)});
 const rk=1+G.rivals.filter(r=>r.p>G.dist).length;if(rk<G.rank&&G.rank<=6&&G.t>0){G.cheer=1;confetti();sfx.cheer();const o=G.rivals.filter(r=>r.p<=G.dist);toast(rk===1?'You’re in the lead!':`Overtook! P${rk}`,'#ffd166')}G.rank=rk;
 if(G.dist>=LEN||G.rivals.every(r=>r.p>=LEN))endRace('finish')}
@@ -496,7 +494,7 @@ const h=Array.from({length:ML()},(_,i)=>`<span class="${i<G.lives?'':'off'}">♥
 const TUT=[
 {h:'Steer your car',v:'<div class="ln"><span class="x"></span></div><div class="ln me">🏎️</div><div class="ln"></div>',b:'<p>The road has <b>3 lanes</b>. Switch lanes with <b>← →</b> or <b>A / D</b>. On a phone or tablet, tap the <b>left, middle or right</b> of the screen. Want to focus on the maths? Turn on <b>Autopilot</b> (or press <b>T</b>) and the car steers itself.</p>'},
 {h:'Solve to go faster',v:'<div class="ab"><i>1</i>12</div><div class="ab"><i>2</i>14</div><div class="ab"><i>3</i>16</div><div class="ab"><i>4</i>18</div>',b:'<p>A sum appears at the bottom. Tap the right answer or press <b>1–4</b> before the yellow timer runs out. Correct answers fire <b>nitro</b>, and streaks give bigger boosts.</p>'},
-{h:'Dodge and collect',v:'🚧 <small>−1 ♥</small> 🪙 <small>+score</small> <span style="color:var(--bad)">♥</span> <small>+1 ♥</small>',b:'<ul><li>🚧 <b>Barriers</b> cost a life. Switch lanes to dodge.</li><li>🪙 <b>Coins</b> add to your score.</li><li>♥ <b>Hearts</b> restore a life (max 3).</li><li>🛡️ With a <b>pink glow</b> (lots of nitro), you smash barriers safely.</li></ul>'},
+{h:'Collect',v:'🪙 <small>+score</small> <span style="color:var(--bad)">♥</span> <small>+1 ♥</small>',b:'<ul><li>🪙 <b>Coins</b> add to your score. Switch lanes to grab them.</li><li>♥ <b>Hearts</b> restore a life.</li></ul>'},
 {h:'Win the race',v:'🏁 <small>Beat 5 rivals to the finish</small>',b:'<p>Watch the <b>track bar</b> at the top to see where everyone is. A wrong or late answer costs a life <b>and</b> some nitro. Lose all 3 lives and you crash out. Good luck!</p>'}];
 let ti=0,tFrom='title';
 function tutShow(){const t=TUT[ti],last=ti===TUT.length-1;$('tv').innerHTML=t.v;$('th').textContent=t.h;$('tb2').innerHTML=t.b;
