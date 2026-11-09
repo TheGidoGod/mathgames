@@ -409,7 +409,7 @@ if(ok){G.streak++;G.boost=cl(G.boost+32+Math.min(G.streak,6)*3,0,100);G.score+=1
 else{G.streak=0;G.lives--;G.boost=cl(G.boost-35,0,100);G.shake=.6;flash();sfx.bad();vib(90);toast(v==null?'Too slow!':'Wrong!','#ff6b8a');if(G.lives<=0){setTimeout(()=>endRace('out'),500);return}}
 setTimeout(()=>{if(G.phase==='race')newQ()},650)}
 function startRace(){initAudio();Object.assign(G,{paused:false,score:0,coins:0,speed:1,boost:0,lives:ML(),dist:0,lane:PL,x:L[PL],streak:0,inv:0,spawn:1.2,rank:6,qLock:true});
-G.items.forEach(i=>scene.remove(i.m));G.items=[];G.rivals.forEach((r,i)=>{r.p=10;r.m.position.x=r.lane;r.m.visible=true});
+G.items.forEach(i=>scene.remove(i.m));G.items=[];G.rivals.forEach((r,i)=>{r.p=0;r.m.position.x=r.lane;r.m.visible=true});
 $('title').classList.remove('v');$('end').classList.remove('v');setPh('countdown');G.cd=3;G.cdN=0;$('cd').classList.add('v')}
 function endRace(kind){if(G.phase==='over')return;setPh('over');$('cd').classList.remove('v');
 let rank=1+G.rivals.filter(r=>r.p>=LEN).length,t,msg,st;
