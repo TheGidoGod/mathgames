@@ -357,8 +357,8 @@ const road=new THREE.Mesh(new THREE.PlaneGeometry(NL*LW,200),new THREE.MeshStand
 const gridT=tex(128,128,(g,w)=>{g.fillStyle='#74c35f';g.fillRect(0,0,w,w);g.strokeStyle='#69b655';g.lineWidth=2;g.strokeRect(0,0,w,w)});gridT.wrapS=gridT.wrapT=THREE.RepeatWrapping;gridT.repeat.set(70,70);
 const gnd=new THREE.Mesh(new THREE.PlaneGeometry(420,420),new THREE.MeshBasicMaterial({map:gridT}));gnd.rotation.x=-Math.PI/2;gnd.position.set(0,-.05,-100);scene.add(gnd);
 /* buildings + lamps */
-const winT=c=>tex(64,128,(g,w,h)=>{g.fillStyle=c;g.fillRect(0,0,w,h);for(let y=0;y<16;y++)for(let x=0;x<8;x++){g.fillStyle=Math.random()<.85?'#6f9fcc':'#a9d0ee';g.fillRect(x*8+1,y*8+2,5,4)}});
-const WT=['#e9eef6','#f1e4d3','#dde8dc'].map(winT),bld=[],lamps=[];
+const winT=c=>tex(64,128,(g,w,h)=>{g.fillStyle=c;g.fillRect(0,0,w,h);for(let y=0;y<16;y++)for(let x=0;x<8;x++){g.fillStyle=Math.random()<.85?'#3d566e':'#5f84a6';g.fillRect(x*8+1,y*8+2,5,4)}});
+const WT=['#a8644a','#c2a077','#8f8b83'].map(winT),bld=[],lamps=[];
 for(let s=-1;s<=1;s+=2){for(let i=0;i<22;i++){const w=R(4,8),h=R(8,34),d=R(5,8),t=WT[i%3].clone();t.needsUpdate=true;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(w/4,h/7);
 const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshStandardMaterial({color:0xffffff,map:t,roughness:.85}));m.position.set(s*(14.4+w/2+R(0,10)),h/2,-i*9+10);m.userData.s=s;scene.add(m);bld.push(m)}
 for(let i=0;i<12;i++){const g=new THREE.Group();const p=new THREE.Mesh(new THREE.BoxGeometry(.15,4.5,.15),new THREE.MeshStandardMaterial({color:0x5b606b}));p.position.y=2.25;const hd=new THREE.Mesh(new THREE.BoxGeometry(1.2,.15,.3),new THREE.MeshBasicMaterial({color:0xfff3b0}));hd.position.set(-s*.5,4.5,0);g.add(p,hd);g.position.set(s*10,0,-i*16);scene.add(g);lamps.push(g)}}
