@@ -474,15 +474,15 @@ function move(l){G.lane=cl(l,0,NL-1)}
 /* ---------- main update ---------- */
 let hsN='';
 function update(dt){G.t+=dt;const ph=G.phase,race=ph==='race',fn=ph==='finish',run=race||fn;
-const tws=ph==='title'?16:ph==='countdown'?0:ph==='race'?22+G.speed*16:fn?12:0;G.ws+=(tws*K-G.ws)*Math.min(1,dt*3);const mv=G.ws*dt;
+const tws=ph==='title'?16:ph==='countdown'?0:ph==='race'?22+G.speed*16:fn?12:0;G.ws+=cl((tws*K-G.ws)*Math.min(1,dt*3),-60*dt,(G.ws<45?12:22)*dt);const lf=cl(G.ws/(22*K),0,1),mv=G.ws*dt;
 roadT.offset.y+=mv/8;gridT.offset.y+=mv/6;
 bld.forEach(b=>{b.position.z+=mv;if(b.position.z>30)b.position.z-=198});lamps.forEach(l=>{l.position.z+=mv;if(l.position.z>20)l.position.z-=192});
 if(ph==='countdown'){G.cd-=dt;const n=Math.ceil(G.cd);if(n!==G.cdN&&n>0){G.cdN=n;$('cd').innerHTML=`<span>${n}</span>`;sfx.beep(0)}
 if(G.cd<=0){setPh('race');$('cd').innerHTML='<span>GO!</span>';sfx.beep(1);sfx.cheer();G.cheer=.8;fxCannons(26,fxH*1.5);setTimeout(()=>$('cd').classList.remove('v'),800);newQ()}}
-if(run){const d0=G.dist;G.boost=Math.max(0,G.boost-5*dt);G.speed+=((fn?.25:.7+G.boost*.035)-G.speed)*Math.min(1,dt*1.5);G.dist+=(30+G.speed*28)*dt;if(race)G.score+=dt*8*G.speed;G.inv=Math.max(0,G.inv-dt);
+if(run){const d0=G.dist;G.boost=Math.max(0,G.boost-5*dt);G.speed+=((fn?.25:.7+G.boost*.035)-G.speed)*Math.min(1,dt*1.5);G.dist+=(30+G.speed*28)*dt*lf;if(race)G.score+=dt*8*G.speed;G.inv=Math.max(0,G.inv-dt);
 if(race)G.qt-=dt;if(race&&!G.qLock){$('tb').style.transform=`scaleX(${cl(G.qt/G.qTot,0,1)})`;if(G.qt<=0)answer(null)}
 if(race)G.spawn-=dt;if(race&&G.spawn<=0){spawnStuff();G.spawn=R(16,26)*K/G.ws}
-G.rivals.forEach(r=>{const gap=r.p-G.dist,p0=r.p;r.p=Math.min(LEN+400,r.p+(r.pace*D[diff].pace*RP[S.rivalPace]*(gap>140?.85:gap<-70?1.1:1)*(r.ft!=null?.6:1)+Math.sin(G.t*.8+r.ph)*4)*dt);if(Math.abs(L[r.li]-G.x)<2.1){const g=r.p-G.dist;r.p=g>=0?Math.max(r.p,G.dist+BL):Math.min(r.p,G.dist-BL)}if(r.ft==null&&p0<LEN&&r.p>=LEN)r.ft=G.t-(r.p-LEN)/Math.max(1e-3,(r.p-p0)/dt);});
+G.rivals.forEach(r=>{const gap=r.p-G.dist,p0=r.p;r.p=Math.min(LEN+400,r.p+(r.pace*D[diff].pace*RP[S.rivalPace]*(gap>140?.85:gap<-70?1.1:1)*(r.ft!=null?.6:1)+Math.sin(G.t*.8+r.ph)*4)*dt*lf);if(Math.abs(L[r.li]-G.x)<2.1){const g=r.p-G.dist;r.p=g>=0?Math.max(r.p,G.dist+BL):Math.min(r.p,G.dist-BL)}if(r.ft==null&&p0<LEN&&r.p>=LEN)r.ft=G.t-(r.p-LEN)/Math.max(1e-3,(r.p-p0)/dt);});
 if(race){const rk=1+G.rivals.filter(r=>r.p>G.dist).length;if(rk<G.rank&&G.rank<=6&&G.t>0){G.cheer=1;confetti();sfx.cheer();fxOvertake(rk===1);const o=G.rivals.filter(r=>r.p<=G.dist);toast(rk===1?'You’re in the lead!':`Overtook! P${rk}`,'#ffd166')}G.rank=rk}
 if(race&&d0<LEN&&G.dist>=LEN){G.pf=G.t-(G.dist-LEN)/Math.max(1e-3,(G.dist-d0)/dt);G.fr=1+G.rivals.filter(r=>r.ft!=null&&r.ft<G.pf).length;G.rank=G.fr;G.fT=0;G.qLock=true;setPh('finish');const close=G.rivals.some(r=>r.ft==null&&LEN-r.p<22);toast(close?'📸 Photo finish!':G.fr===1?'🏁 First across the line!':'🏁 Finish! P'+G.fr,'#ffd166');G.cheer=1;confetti();sfx.cheer()}else if(race&&G.rivals.every(r=>r.ft!=null))endRace('finish');if(fn){G.fT+=dt;if(G.fT>2.6)endRace('finish')}}
 /* player */
