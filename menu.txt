@@ -2,4 +2,5 @@
 @subtitle = Fun maths games to play!
 
 ## Games
-Math Rush 3D | racing.html | Fun racing game with math problems | 🏎️
+Math Rush 3D | racing.html | *OUTDATED! CHECK NEW MATH RACER 3D* | 🕰️
+Math Racer 3D | racingNEW.html | Fun racing game with math problems | 🏎️
