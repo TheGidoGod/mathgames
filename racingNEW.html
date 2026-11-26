@@ -53,6 +53,11 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke
 .chip:not(:empty){display:inline-block}
 #fx{position:fixed;inset:0;pointer-events:none;opacity:0;transition:opacity .25s;background:radial-gradient(ellipse at center,transparent 55%,rgba(255,201,51,.3))}
 #fxb{position:fixed;inset:0;pointer-events:none;opacity:0;transition:opacity .25s;background:radial-gradient(ellipse at center,transparent 50%,rgba(255,80,80,.38))}
+.lv{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px}
+.lv button{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:12px;text-align:left;border-radius:12px}
+.lv b{font:700 24px/1 var(--fd);color:var(--c)}
+.lv span{font-size:12px;line-height:1.3;color:var(--mut);font-weight:500}
+.lv button.on{background:rgba(255,255,255,.12);border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c)}
 @keyframes pop{from{transform:scale(.85)}to{transform:scale(1)}}
 /* feedback message */
 #msg{position:fixed;top:36%;left:0;right:0;padding:0 16px;text-align:center;font:800 clamp(34px,9vw,72px)/1.05 var(--fd);letter-spacing:.02em;pointer-events:none;opacity:0;transition:opacity .3s;text-shadow:0 2px 0 rgba(0,0,0,.35),0 6px 28px rgba(0,0,0,.55)}
@@ -139,7 +144,7 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke
  <div class="kr"><span>Answer</span><span class="kk"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd><i>or tap</i></span></div>
  <div class="kr"><span>Pause</span><span class="kk"><kbd>P</kbd><i>or</i><kbd>Esc</kbd></span></div>
 </div></div>
-<div id="end"></div><div class="row"><button id="go" class="pri">Start race</button><button id="gs">Settings</button></div></div></div>
+<div id="end"></div><div class="lbl" style="margin-bottom:8px">Difficulty</div><div id="lvb" class="lv"></div><div class="row"><button id="go" class="pri">Start race</button><button id="gs">Settings</button></div></div></div>
 <div id="se" class="ov" style="display:none"><div class="card sc" role="dialog" aria-label="Settings"><div class="sh"><div><h1>Settings</h1><p id="sum"></p></div><button id="sx" class="ib" aria-label="Close settings"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div><div id="sl"></div><div class="sf"><button id="rd">Reset to defaults</button><button id="sd" class="pri">Done</button></div></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -150,8 +155,8 @@ addEventListener('error',e=>{$('end').textContent='Error: '+e.message});
 if(typeof THREE==='undefined'){$('end').textContent='Couldn’t load the 3D engine (Three.js). Check your connection and reload.';throw new Error('THREE missing')}
 const R=Math.random,W=14,SEG=5,N=90;
 const SCHEMA=[
-{k:'lvl',t:'Math level',o:['Easy','Medium','Hard','Expert','Progressive'],d:4},
-{k:'qt',t:'Time per question (algebra gets 3×)',o:['6 s','10 s','15 s','No limit'],v:[6,10,15,0],d:1},
+{k:'lvl',t:'Difficulty',o:['Easy','Medium','Hard'],d:1},
+{k:'qt',t:'Time per question (Hard gets 3×)',o:['6 s','10 s','15 s','No limit'],v:[6,10,15,0],d:1},
 {k:'riv',t:'Rivals *',o:['0','2','4','6'],v:[0,2,4,6],d:2},
 {k:'len',t:'Race length *',o:['Sprint','Standard','Endurance'],v:[3000,6000,10000],d:1},
 {k:'ai',t:'Rival skill *',o:['Easy','Normal','Hard'],v:[0,1,2],d:1},
@@ -208,13 +213,21 @@ const banner=new THREE.Mesh(new THREE.PlaneGeometry(W+2,2.8),new THREE.MeshBasic
 for(const x of[-W/2-.8,W/2+.8]){const p=new THREE.Mesh(new THREE.BoxGeometry(.7,11,.7),M(0xffd23f));p.position.set(x,5.5,0);fl.add(p)}
 scene.add(fl);
 // questions
-function gen(L){const r=(n,m)=>n+Math.floor(R()*(m-n+1));let q,a;
- if(L<1){const x=r(6,49),y=r(3,35);if(R()<.5){q=x+' + '+y;a=x+y}else{q=(x+y)+' − '+y;a=x}}
- else if(L<2){const x=r(3,12),y=r(3,12);q=x+' × '+y;a=x*y}
- else if(L<3){const x=r(2,12),m=r(2,9),b=r(1,20);q=m+'x + '+b+' = '+(m*x+b)+',  x = ?';a=x}
- else if(L<4){const x=r(6,25);q=x+'² = ?';a=x*x}
- else{const x=r(2,12),y=r(2,7);q='√'+(x*x)+' + '+y+'² = ?';a=x+y*y}
- const w=new Set();while(w.size<3){const o=a+(R()<.5?-1:1)*r(1,Math.max(3,Math.ceil(a*.2)));if(o!==a&&o>=0)w.add(o)}
+function gen(L){const r=(n,m)=>n+Math.floor(R()*(m-n+1)),pk=A=>A[Math.floor(R()*A.length)];let q,a;
+ if(L<1){if(R()<.6){const x=r(1,9),y=r(1,9);q=x+' + '+y;a=x+y}else{const u=r(5,18),v=r(1,u-1);q=u+' − '+v;a=u-v}}
+ else if(L<2){const t=r(0,3);
+  if(t===0){const x=r(20,89),y=r(11,59);q=x+' + '+y;a=x+y}
+  else if(t===1){const u=r(40,99),v=r(11,39);q=u+' − '+v;a=u-v}
+  else if(t===2){const x=r(4,12),y=r(4,12);q=x+' × '+y;a=x*y}
+  else{const x=r(2,12),m=r(2,5),b=r(1,15);q=m+'x + '+b+' = '+(m*x+b)+',  x = ?';a=x}}
+ else{const t=r(0,4);
+  if(t===0){const x=r(13,49),y=r(12,29);q=x+' × '+y+' = ?';a=x*y}
+  else if(t===1){const x=r(12,25),y=r(4,9),u=r(12,25),v=r(4,9);q='('+x+' × '+y+') + ('+u+' × '+v+') = ?';a=x*y+u*v}
+  else if(t===2){const x=r(15,35),y=r(8,x-4);q=x+'² − '+y+'² = ?';a=x*x-y*y}
+  else if(t===3){const x=r(2,15),m=r(5,12),n=r(2,m-2),c=r(1,(m-n)*x-1),b=(m-n)*x-c;q=m+'x − '+b+' = '+n+'x + '+c+',  x = ?';a=x}
+  else{const p=pk([15,35,45,65,85]),N=pk([60,80,120,140,160,180,220,240]);q=p+'% of '+N+' = ?';a=p*N/100}}
+ const sp=L===2?Math.max(10,Math.ceil(a*.05)):Math.max(3,Math.ceil(a*.2));
+ const w=new Set();while(w.size<3){const o=a+(R()<.5?-1:1)*r(1,sp);if(o!==a&&o>=0)w.add(o)}
  return{q,a,opts:[a,...w].sort(()=>R()-.5)}}
 // state
 let d=0,lat=0,spd=0,steer=0,boost=0,run=false,paused=false,last=0,cd=0,raceT=0,D=6000,q=null,qCool=0,qT=0,qMax=0,streak=0,best=0,right=0,total=0,msgT=0,tl=0,tr=0,rank=1,dots=[];
@@ -222,7 +235,7 @@ const keys={},tc={l:0,r:0,g:0,b:0};
 const fmt=t=>Math.floor(t/60)+':'+String(Math.floor(t%60)).padStart(2,'0');
 function flash(t,c){const m=$('msg');m.textContent=t;m.style.color=c;m.style.opacity=1;msgT=1.4;m.style.animation='none';void m.offsetWidth;m.style.animation='pop .3s ease-out'}
 function buildProg(){const p=$('prog');p.innerHTML='';dots=[];for(let i=-1;i<val('riv');i++){const e=document.createElement('i');e.className=i<0?'dot me':'dot';if(i>=0)e.style.background='#'+RC[i].toString(16).padStart(6,'0');p.appendChild(e);dots.push(e)}}
-function newQ(){const i=S.lvl,L=i<3?i:i===3?3+(R()<.5?1:0):Math.min(4,Math.floor(right/3));q=gen(L);qT=qMax=val('qt')*(L===2?3:1);
+function newQ(){const L=S.lvl;q=gen(L);qT=qMax=val('qt')*(L===2?3:1);
  $('qq').textContent=q.q;$('qbar').style.width='100%';$('qbar').classList.remove('low');[...$('qo').children].forEach((b,j)=>{b.innerHTML='<kbd>'+(j+1)+'</kbd><span>'+q.opts[j]+'</span>'});$('qp').style.display='block'}
 function answer(i){if(!q)return;total++;const ok=i>=0&&q.opts[i]===q.a;
  if(ok){right++;streak++;best=Math.max(best,streak);boost=2.2+Math.min(streak,5)*.4;flash('Turbo ×'+streak,'#3ddc97')}
@@ -266,8 +279,11 @@ function step(dt){
  if(d>=D)finish()}
 // settings
 function applySet(){pc.bm.color.setHex(CARC[S.col]);rs()}
-const GROUPS=[['Questions',['lvl','qt']],['Race',['riv','len','ai']],['Driving',['str','cam']],['Look',['col','gfx']]];
-const HINT={lvl:'Progressive starts easy and gets harder as you answer correctly.',qt:'How long you get to answer each question.',riv:'How many rival cars are on track.',len:'Sprint is the shortest race, Endurance the longest.',ai:'How fast and aggressively rivals drive.',str:'How quickly your car turns.',cam:'Where the camera sits behind your car.',col:'Choose your car’s colour.',gfx:'Low runs more smoothly on older devices.'};
+const LV=[['Easy','Simple adding and taking away','#3ddc97'],['Medium','Times tables and algebra','#ffc933'],['Hard','Brutal multi-step maths','#ff6b6b']];
+function renderLvl(){const c=$('lvb');c.innerHTML='';LV.forEach(([n,t,col],i)=>{const b=document.createElement('button');b.style.setProperty('--c',col);b.innerHTML='<b>'+n+'</b><span>'+t+'</span>';if(S.lvl===i)b.className='on';b.setAttribute('aria-pressed',S.lvl===i);b.onclick=()=>{S.lvl=i;save();renderLvl()};c.appendChild(b)})}
+renderLvl();
+const GROUPS=[['Questions',['qt']],['Race',['riv','len','ai']],['Driving',['str','cam']],['Look',['col','gfx']]];
+const HINT={qt:'How long you get to answer each question.',riv:'How many rival cars are on track.',len:'Sprint is the shortest race, Endurance the longest.',ai:'How fast and aggressively rivals drive.',str:'How quickly your car turns.',cam:'Where the camera sits behind your car.',col:'Choose your car’s colour.',gfx:'Low runs more smoothly on older devices.'};
 const SW=['#e63946','#1d6fd6','#ffd23f','#2a9d3f','#f1f1f1'];
 function renderSet(){const L=$('sl'),st=L.scrollTop,a=document.activeElement,fk=a&&a.dataset?a.dataset.f:null;L.innerHTML='';
  GROUPS.forEach(([gt,ks])=>{const sec=document.createElement('section');sec.className='sg';sec.innerHTML='<h2>'+gt+'</h2>';
@@ -283,7 +299,7 @@ function renderSet(){const L=$('sl'),st=L.scrollTop,a=document.activeElement,fk=
  L.scrollTop=st;if(fk){const e=L.querySelector('[data-f="'+fk+'"]');if(e)e.focus({preventScroll:true})}}
 const openSet=()=>{renderSet();$('se').style.display='flex'},closeSet=()=>{$('se').style.display='none'};
 function setPause(p){if(!run)return;paused=p;$('po').style.display=p?'flex':'none';last=performance.now()}
-$('gs').onclick=openSet;$('sx').onclick=closeSet;$('rd').onclick=()=>{SCHEMA.forEach(s=>{S[s.k]=s.d});save();applySet();renderSet()};$('gs2').onclick=openSet;$('sd').onclick=closeSet;
+$('gs').onclick=openSet;$('sx').onclick=closeSet;$('rd').onclick=()=>{SCHEMA.forEach(s=>{S[s.k]=s.d});save();applySet();renderSet();renderLvl()};$('gs2').onclick=openSet;$('sd').onclick=closeSet;
 $('gear').onclick=()=>{setPause(true);openSet()};
 $('pz').onclick=()=>setPause(true);$('rs2').onclick=()=>setPause(false);
 [...$('qo').children].forEach((b,j)=>b.addEventListener('pointerdown',e=>{e.preventDefault();if(run&&!paused&&cd<=0)answer(j)}));
