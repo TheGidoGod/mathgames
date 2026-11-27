@@ -182,11 +182,13 @@ const sun=new THREE.DirectionalLight(0xffffff,.7);sun.position.set(30,60,20);sce
 const M=c=>new THREE.MeshLambertMaterial({color:c});
 const ground=new THREE.Mesh(new THREE.PlaneGeometry(1200,1200),M(0x3f8f3a));ground.rotation.x=-Math.PI/2;scene.add(ground);
 const cR=M(0xd62828),cW=M(0xf5f5f5),roadM=M(0x3a3a40),dashM=M(0xffffff);
+const fRail=new THREE.BoxGeometry(.14,.2,SEG+.3),fPost=new THREE.BoxGeometry(.26,1.4,.26),fM=M(0xf5f5f5),fPM=M(0x8a8f98);
 const segs=[];
 for(let i=0;i<N;i++){const g=new THREE.Group();
  g.add(new THREE.Mesh(new THREE.BoxGeometry(W,.2,SEG+.3),roadM));
  const a=new THREE.Mesh(new THREE.BoxGeometry(1,.3,SEG+.3),cR),b=a.clone();a.position.set(-W/2-.5,.05,0);b.position.set(W/2+.5,.05,0);
  const dd=new THREE.Mesh(new THREE.BoxGeometry(.3,.22,2.5),dashM);dd.position.y=.01;
+ for(const sx of[-1,1]){const x=sx*(W/2+2.4);for(const y of[.55,1.05]){const rl=new THREE.Mesh(fRail,fM);rl.position.set(x,y,0);g.add(rl)}for(const z of[-SEG/4,SEG/4]){const p=new THREE.Mesh(fPost,fPM);p.position.set(x,.7,z);g.add(p)}}
  g.add(a,b,dd);g.userData={a,b,d:dd};scene.add(g);segs.push(g)}
 const trees=[];
 for(let i=0;i<34;i++){const g=new THREE.Group();
@@ -261,7 +263,7 @@ function step(dt){
  if(spd<tgt)spd+=((tgt-spd)*.6+6)*dt;else spd-=(spd-tgt)*.8*dt;
  if(spd>maxS)spd-=(spd-maxS)*2*dt;
  if(B)spd-=75*dt;spd=Math.max(8,spd);
- lat+=steer*dt*(9+spd*.14)*val('str')-d2(d)*spd*spd*.45*dt;lat=Math.max(-W,Math.min(W,lat));
+ lat+=steer*dt*(9+spd*.14)*val('str')-d2(d)*spd*spd*.45*dt;lat=Math.max(-W/2-1.2,Math.min(W/2+1.2,lat));if(Math.abs(lat)>=W/2+1.2)spd*=Math.max(0,1-2*dt);
  d+=spd*dt;
  let rk=1;
  rv.forEach((r,i)=>{if(!r.g.visible)return;
