@@ -8,7 +8,7 @@
 :root{color-scheme:dark;--bg:#0a0f1c;--panel:rgba(10,16,32,.66);--glass:rgba(255,255,255,.07);--line:rgba(255,255,255,.14);--fg:#f3f6fb;--mut:#a3b0c8;--ac:#ffc933;--ink:#15120a;--ok:#3ddc97;--bad:#ff6b6b;--f:'Barlow',system-ui,-apple-system,'Segoe UI',sans-serif;--fd:'Barlow Condensed','Arial Narrow',system-ui,sans-serif}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--fg);font:500 16px/1.4 var(--f);user-select:none;-webkit-user-select:none}
-canvas{display:block}
+canvas{display:block;touch-action:none}
 button{font:600 16px var(--f);color:inherit;cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:12px 22px;background:var(--glass);transition:background .15s,transform .1s}
 button:hover{background:rgba(255,255,255,.14)}
 button:active{transform:translateY(1px)}
@@ -127,6 +127,7 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke
  <div class="right">
   <div class="pnl"><span class="lbl">Time</span><div class="val"><span id="tm">0:00</span></div></div>
   <div class="tools">
+   <button id="cb" class="ib" aria-label="Change camera"><svg class="i" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
    <button id="pz" class="ib" aria-label="Pause"><svg class="i" viewBox="0 0 24 24" style="fill:currentColor;stroke:none"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></button>
    <button id="gear" class="ib" aria-label="Settings"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></button>
   </div>
@@ -143,6 +144,8 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke
  <div class="kr"><span>Brake</span><span class="kk"><kbd>S</kbd><i>or</i><kbd>↓</kbd></span></div>
  <div class="kr"><span>Answer</span><span class="kk"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd><i>or tap</i></span></div>
  <div class="kr"><span>Pause</span><span class="kk"><kbd>P</kbd><i>or</i><kbd>Esc</kbd></span></div>
+ <div class="kr"><span>Switch camera</span><span class="kk"><kbd>C</kbd></span></div>
+ <div class="kr"><span>360° look-around</span><span class="kk">drag<i>or</i><kbd>Q</kbd><kbd>E</kbd><i>·</i><kbd>R</kbd></span></div>
 </div></div>
 <div id="end"></div><div class="lbl" style="margin-bottom:8px">Difficulty</div><div id="lvb" class="lv"></div><div class="row"><button id="go" class="pri">Start race</button><button id="gs">Settings</button></div></div></div>
 <div id="se" class="ov" style="display:none"><div class="card sc" role="dialog" aria-label="Settings"><div class="sh"><div><h1>Settings</h1><p id="sum"></p></div><button id="sx" class="ib" aria-label="Close settings"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div><div id="sl"></div><div class="sf"><button id="rd">Reset to defaults</button><button id="sd" class="pri">Done</button></div></div></div>
@@ -161,7 +164,7 @@ const SCHEMA=[
 {k:'len',t:'Race length *',o:['Sprint','Standard','Endurance'],v:[3000,6000,10000],d:1},
 {k:'ai',t:'Rival skill *',o:['Easy','Normal','Hard'],v:[0,1,2],d:1},
 {k:'str',t:'Steering',o:['Gentle','Normal','Sharp'],v:[.8,1,1.3],d:1},
-{k:'cam',t:'Camera',o:['Chase','Far','Low'],d:0},
+{k:'cam',t:'Camera',o:['Chase','Far','Low','360°'],d:0},
 {k:'col',t:'Car colour',o:['Red','Blue','Yellow','Green','White'],d:0},
 {k:'gfx',t:'Graphics',o:['Low','High'],d:1}];
 const SC={},S={};SCHEMA.forEach(s=>{SC[s.k]=s;S[s.k]=s.d});
@@ -248,6 +251,7 @@ function gen(L){const r=(n,m)=>n+Math.floor(R()*(m-n+1)),pk=A=>A[Math.floor(R()*
  const w=new Set();while(w.size<3){const o=a+(R()<.5?-1:1)*r(1,sp);if(o!==a&&o>=0)w.add(o)}
  return{q,a,opts:[a,...w].sort(()=>R()-.5)}}
 // state
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));let oy=0,op=.25,oz=14;
 let d=0,lat=0,spd=0,steer=0,boost=0,run=false,paused=false,last=0,cd=0,raceT=0,D=6000,q=null,qCool=0,qT=0,qMax=0,streak=0,best=0,right=0,total=0,msgT=0,tl=0,tr=0,rank=1,dots=[];
 const keys={},tc={l:0,r:0,g:0,b:0};
 const fmt=t=>Math.floor(t/60)+':'+String(Math.floor(t%60)).padStart(2,'0');
@@ -301,7 +305,7 @@ const LV=[['Easy','Simple adding and taking away','#3ddc97'],['Medium','Times ta
 function renderLvl(){const c=$('lvb');c.innerHTML='';LV.forEach(([n,t,col],i)=>{const b=document.createElement('button');b.style.setProperty('--c',col);b.innerHTML='<b>'+n+'</b><span>'+t+'</span>';if(S.lvl===i)b.className='on';b.setAttribute('aria-pressed',S.lvl===i);b.onclick=()=>{S.lvl=i;save();renderLvl()};c.appendChild(b)})}
 renderLvl();
 const GROUPS=[['Questions',['qt']],['Race',['riv','len','ai']],['Driving',['str','cam']],['Look',['col','gfx']]];
-const HINT={qt:'How long you get to answer each question.',riv:'How many rival cars are on track.',len:'Sprint is the shortest race, Endurance the longest.',ai:'How fast and aggressively rivals drive.',str:'How quickly your car turns.',cam:'Where the camera sits behind your car.',col:'Choose your car’s colour.',gfx:'Low runs more smoothly on older devices.'};
+const HINT={qt:'How long you get to answer each question.',riv:'How many rival cars are on track.',len:'Sprint is the shortest race, Endurance the longest.',ai:'How fast and aggressively rivals drive.',str:'How quickly your car turns.',cam:'Where the camera sits. 360° is a free camera: drag (or Q/E) to orbit, scroll or pinch to zoom, R to recentre. Switch any time with C.',col:'Choose your car’s colour.',gfx:'Low runs more smoothly on older devices.'};
 const SW=['#e63946','#1d6fd6','#ffd23f','#2a9d3f','#f1f1f1'];
 function renderSet(){const L=$('sl'),st=L.scrollTop,a=document.activeElement,fk=a&&a.dataset?a.dataset.f:null;L.innerHTML='';
  GROUPS.forEach(([gt,ks])=>{const sec=document.createElement('section');sec.className='sg';sec.innerHTML='<h2>'+gt+'</h2>';
@@ -319,34 +323,54 @@ const openSet=()=>{renderSet();$('se').style.display='flex'},closeSet=()=>{$('se
 function setPause(p){if(!run)return;paused=p;$('po').style.display=p?'flex':'none';last=performance.now()}
 $('gs').onclick=openSet;$('sx').onclick=closeSet;$('rd').onclick=()=>{SCHEMA.forEach(s=>{S[s.k]=s.d});save();applySet();renderSet();renderLvl()};$('gs2').onclick=openSet;$('sd').onclick=closeSet;
 $('gear').onclick=()=>{setPause(true);openSet()};
-$('pz').onclick=()=>setPause(true);$('rs2').onclick=()=>setPause(false);
+$('pz').onclick=()=>setPause(true);
+function cycleCam(){S.cam=(S.cam+1)%SC.cam.o.length;save();applySet();if(run&&!paused)flash(SC.cam.o[S.cam]+' camera','#fff')}
+$('cb').onclick=cycleCam;
+addEventListener('wheel',e=>{if(S.cam===3&&!e.target.closest('.ov'))oz=clamp(oz*(1+e.deltaY*.001),6,40)},{passive:true});$('rs2').onclick=()=>setPause(false);
 [...$('qo').children].forEach((b,j)=>b.addEventListener('pointerdown',e=>{e.preventDefault();if(run&&!paused&&cd<=0)answer(j)}));
 document.querySelectorAll('#ctl button').forEach(b=>{const k=b.dataset.k;b.addEventListener('pointerdown',e=>{e.preventDefault();tc[k]=1});['pointerup','pointercancel','pointerleave'].forEach(t=>b.addEventListener(t,()=>{tc[k]=0}))});
 addEventListener('keydown',e=>{const k=e.key.toLowerCase();
  if(k==='escape'&&$('se').style.display!=='none'){closeSet();return}
  keys[k]=1;if(k==='p'||k==='escape')setPause(!paused);
+ if(k==='c'&&!e.repeat&&run&&!paused)cycleCam();
+ if(k==='r'&&S.cam===3){oy=0;op=.25;oz=14}
  if(k>='1'&&k<='4'&&!e.repeat&&run&&!paused&&cd<=0)answer(+k-1)});
 addEventListener('keyup',e=>keys[e.key.toLowerCase()]=0);
-addEventListener('pointerdown',e=>{if(e.target.closest('button,.ov'))return;e.clientX<innerWidth/2?tl=1:tr=1});
-addEventListener('pointerup',()=>{tl=tr=0});
+const pts=new Map();let pd=0;
+addEventListener('pointerdown',e=>{if(e.target.closest('button,.ov,#qp'))return;
+ if(S.cam===3){pts.set(e.pointerId,[e.clientX,e.clientY]);if(pts.size===2){const[a,b]=[...pts.values()];pd=Math.hypot(a[0]-b[0],a[1]-b[1])}return}
+ e.clientX<innerWidth/2?tl=1:tr=1});
+addEventListener('pointermove',e=>{const p=pts.get(e.pointerId);if(!p)return;
+ if(pts.size===1){oy-=(e.clientX-p[0])*.008;op=clamp(op+(e.clientY-p[1])*.006,.05,1.45)}
+ p[0]=e.clientX;p[1]=e.clientY;
+ if(pts.size===2){const[a,b]=[...pts.values()],n=Math.hypot(a[0]-b[0],a[1]-b[1]);if(pd&&n)oz=clamp(oz*pd/n,6,40);pd=n}});
+const pup=e=>{pts.delete(e.pointerId);tl=tr=0};
+addEventListener('pointerup',pup);addEventListener('pointercancel',pup);
 applySet();
 function loop(now){requestAnimationFrame(loop);const dt=paused?0:Math.min(.05,(now-last)/1000);last=now;
  if(run&&!paused){if(cd>0){cd-=dt;if(cd>0)flash(String(Math.ceil(cd)),'#fff');else flash('Go!','#3ddc97')}else step(dt)}
  if(msgT>0){msgT-=dt;if(msgT<=0)$('msg').style.opacity=0}
- const base=Math.floor(d/SEG)*SEG-15;
+ const base=Math.floor(d/SEG)*SEG-(S.cam===3?70:15);
  segs.forEach((g,i)=>{const s=base+i*SEG,n=Math.round(s/SEG);g.position.set(curve(s),0,-s);g.rotation.y=-Math.atan(d1(s));
   const m=n%2?cR:cW;g.userData.a.material=m;g.userData.b.material=m;g.userData.d.visible=false;g.userData.ad.forEach(x=>{x.material=ADM[((n%4)+4)%4]})});
- const tb=Math.floor(d/14)-2;
+ const tb=Math.floor(d/14)-(S.cam===3?7:2);
  trees.forEach((t,i)=>{const n=tb+(((i-tb)%34)+34)%34,s=n*14,h=Math.abs(Math.sin(n*127.1)*43758)%1,side=Math.abs(Math.sin(n*311.7)*43758)%1>.5?1:-1;
   t.position.set(curve(s)+side*(17+h*16),0,-s);t.scale.setScalar(.8+h*.7);t.visible=(!!S.gfx||n%2===0)&&s%150>14&&s%150<136});
  const sb=Math.floor(d/150)-1;
  stands.forEach((g,j)=>{const n=sb+(((j-sb)%5)+5)%5,s=n*150,sd=n%2?1:-1;g.position.set(curve(s)+sd*(W/2+8.5),0,-s);g.rotation.y=-Math.atan(d1(s))+(sd<0?Math.PI:0);g.visible=n>0});
  car.position.set(curve(d)+lat,0,-d);car.rotation.y=-Math.atan(d1(d))-steer*.3;car.rotation.z=-steer*.04;
  rv.forEach(r=>{if(r.g.visible){r.g.position.set(curve(r.d)+r.lat,0,-r.d);r.g.rotation.y=-Math.atan(d1(r.d))}});
- const[cD,cH]=CAMS[S.cam];
- cam.position.set(curve(d-cD)+lat*.7,cH,-(d-cD));cam.lookAt(curve(d+15)+lat*.9,1.6,-(d+15));
+ if(S.cam===3){
+  if(keys.q)oy-=dt*2;if(keys.e)oy+=dt*2;
+  const a=-Math.atan(d1(d))+oy,cp=Math.cos(op);
+  cam.position.set(car.position.x+oz*cp*Math.sin(a),Math.max(.5,1.1+oz*Math.sin(op)),car.position.z+oz*cp*Math.cos(a));
+  cam.lookAt(car.position.x,1.1,car.position.z)
+ }else{
+  const[cD,cH]=CAMS[S.cam];
+  cam.position.set(curve(d-cD)+lat*.7,cH,-(d-cD));cam.lookAt(curve(d+15)+lat*.9,1.6,-(d+15))
+ }
  cam.fov+=((66+spd*.35+(boost>0?10:0))-cam.fov)*.1;cam.updateProjectionMatrix();
- ground.position.set(car.position.x,-.1,car.position.z);hills.forEach((h,i)=>{h.position.x=car.position.x+(i%2?1:-1)*(150+i*12);h.position.z=car.position.z-280-i*40});
+ ground.position.set(car.position.x,-.1,car.position.z);hills.forEach((h,i)=>{h.position.x=car.position.x+(i%2?1:-1)*(150+i*12);h.position.z=car.position.z+(S.cam===3&&i>=4?1:-1)*(280+i*40)});
  $('sp').textContent=Math.round(spd*3.2);$('sbar').style.width=Math.min(100,spd*3.2/380*100)+'%';$('sbar').classList.toggle('turbo',boost>0);$('fx').style.opacity=run&&boost>0?1:0;$('chip').textContent=run&&streak>1?'Streak '+streak:'';$('tm').textContent=fmt(raceT);
  if(dots.length){const pct=x=>Math.max(0,Math.min(100,x/D*100))+'%';dots[0].style.left=pct(d);rv.forEach((r,i)=>{if(dots[i+1])dots[i+1].style.left=pct(r.d)});$('pos').textContent=rank+'/'+dots.length}
  ren.render(scene,cam)}
