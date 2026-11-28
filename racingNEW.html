@@ -208,12 +208,35 @@ for(let i=0;i<34;i++){const g=new THREE.Group();
  const t=new THREE.Mesh(new THREE.CylinderGeometry(.4,.5,2,6),M(0x6b4423));t.position.y=1;
  const c=new THREE.Mesh(new THREE.ConeGeometry(2,5,7),M(0x1f6b2e));c.position.y=4.2;g.add(t,c);scene.add(g);trees.push(g)}
 const hills=[];for(let i=0;i<8;i++){const h=new THREE.Mesh(new THREE.ConeGeometry(60+i*8,40+i*6,5),M(i%2?0x3b7a45:0x356f3f));h.position.y=(40+i*6)/2-2;scene.add(h);hills.push(h)}
-const crowd=tex(64,16);{const c2=crowd.c.getContext('2d');for(let i=0;i<64;i++)for(let j=0;j<16;j++){c2.fillStyle='hsl('+Math.floor(R()*360)+',55%,'+(40+Math.floor(R()*30))+'%)';c2.fillRect(i,j,1,1)}crowd.t.needsUpdate=true}
-const crowdM=new THREE.MeshBasicMaterial({map:crowd.t}),roofM=M(0xc1121f),stands=[];
-for(let j=0;j<5;j++){const g=new THREE.Group();for(let i=0;i<3;i++){const h=1.2+i*1.2,o=new THREE.Mesh(new THREE.BoxGeometry(3.2,h,16),crowdM);o.position.set(i*3.2+1.6,h/2,0);g.add(o)}
- const rf=new THREE.Mesh(new THREE.BoxGeometry(11,.3,17),roofM);rf.position.set(5.2,7,0);g.add(rf);
- for(const z of[-7,7]){const p=new THREE.Mesh(new THREE.BoxGeometry(.3,7,.3),fPM);p.position.set(9.4,3.5,z);g.add(p)}
- scene.add(g);stands.push(g)}
+// audience: stepped stands filled with animated spectators (instanced, so it stays cheap)
+const stepM=M(0x8a8f98),roofM=M(0xc1121f),stands=[],crowds=[],peopleM=new THREE.MeshLambertMaterial({color:0xffffff});
+const SKIN=[0xf1c9a5,0xe0ac84,0xc68642,0x8d5524,0x5c3a21],SHIRT=[0xe63946,0x1d6fd6,0xffd23f,0x2a9d3f,0xf1f1f1,0x8338ec,0xff7b00,0x111111,0xff006e,0x00b4d8];
+const bodyG=new THREE.BoxGeometry(.28,.55,.42),headG=new THREE.SphereGeometry(.17,8,6),armG=new THREE.BoxGeometry(.1,.5,.1).translate(0,.25,0);
+const SL=24,SK=21;// stand length, stands per side (SK*SL covers the whole view distance)
+const stepG=(()=>{const sh=new THREE.Shape();[[0,0],[9.6,0],[9.6,3.6],[6.4,3.6],[6.4,2.4],[3.2,2.4],[3.2,1.2],[0,1.2]].forEach(([x,y],i)=>i?sh.lineTo(x,y):sh.moveTo(x,y));
+ return new THREE.ExtrudeGeometry(sh,{depth:SL+2,bevelEnabled:false}).translate(0,0,-(SL+2)/2)})(),roofG=new THREE.BoxGeometry(11,.3,SL+2),postG=new THREE.BoxGeometry(.3,7,.3);
+function mkStand(){const g=new THREE.Group();
+ g.add(new THREE.Mesh(stepG,stepM));
+ const rf=new THREE.Mesh(roofG,roofM);rf.position.set(5.2,7,0);g.add(rf);
+ for(const z of[-SL/2+1,SL/2-1]){const p=new THREE.Mesh(postG,fPM);p.position.set(9.4,3.5,z);g.add(p)}
+ const P=[],pk=A=>A[Math.floor(R()*A.length)],zm=SL/2-.6;
+ for(let i=0;i<3;i++)for(let r=0;r<2;r++)for(let z=-zm;z<=zm;z+=.82){if(R()<.1)continue;
+  P.push({x:i*3.2+1+r*1.3+(R()-.5)*.2,y:1.2+i*1.2+r*.1,z:z+(R()-.5)*.2,ph:R()*6.28,sp:5+R()*5,c:pk(SHIRT),k:pk(SKIN)})}
+ const mk=(geo,n)=>{const m=new THREE.InstancedMesh(geo,peopleM,n);m.frustumCulled=false;g.add(m);return m};
+ const bm=mk(bodyG,P.length),hm=mk(headG,P.length),am=mk(armG,P.length*2),col=new THREE.Color();
+ P.forEach((q,i)=>{bm.setColorAt(i,col.setHex(q.c));hm.setColorAt(i,col.setHex(q.k));am.setColorAt(i*2,col.setHex(q.k));am.setColorAt(i*2+1,col)});
+ const c={g,P,bm,hm,am,dm:new THREE.Object3D()};poseCrowd(c,0,0);crowds.push(c);return g}
+// ch = 0 (calm) .. 1 (going wild): bigger hops, arms thrown up and waving
+function poseCrowd(c,t,ch){const{P,bm,hm,am,dm}=c;
+ for(let i=0;i<P.length;i++){const q=P[i],y=q.y+Math.max(0,Math.sin(t*q.sp+q.ph))*(.03+.2*ch);
+  dm.rotation.set(0,0,0);dm.position.set(q.x,y+.275,q.z);dm.updateMatrix();bm.setMatrixAt(i,dm.matrix);
+  dm.position.y=y+.78;dm.updateMatrix();hm.setMatrixAt(i,dm.matrix);
+  const a=Math.PI-(.12+.88*ch)*(Math.PI-.45)+Math.sin(t*q.sp*1.3+q.ph)*.3*ch;
+  dm.position.set(q.x,y+.5,q.z+.27);dm.rotation.x=a;dm.updateMatrix();am.setMatrixAt(i*2,dm.matrix);
+  dm.position.z=q.z-.27;dm.rotation.x=-a;dm.updateMatrix();am.setMatrixAt(i*2+1,dm.matrix)}
+ bm.instanceMatrix.needsUpdate=hm.instanceMatrix.needsUpdate=am.instanceMatrix.needsUpdate=true;
+ if(bm.instanceColor){bm.instanceColor.needsUpdate=hm.instanceColor.needsUpdate=am.instanceColor.needsUpdate=true}}
+for(let j=0;j<SK*2;j++){const g=mkStand();scene.add(g);stands.push(g)}
 function mkCar(col){const g=new THREE.Group(),bm=M(col),dk=M(0x15161a),bx=(w,h,l,m,x,y,z)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,l),m);o.position.set(x,y,z);g.add(o);return o};
  bx(.7,.5,2.7,bm,0,.6,.2);bx(.42,.32,1.7,bm,0,.45,-1.9);bx(.6,.45,1.5,bm,-.75,.55,.4);bx(.6,.45,1.5,bm,.75,.55,.4);bx(.5,.55,1.3,bm,0,1,1);bx(.3,.35,.4,dk,0,1.4,.55);bx(1.6,.06,4.2,dk,0,.2,.3);
  bx(2.1,.07,.55,dk,0,.22,-2.55);bx(.06,.3,.6,bm,-1.05,.35,-2.55);bx(.06,.3,.6,bm,1.05,.35,-2.55);
@@ -252,7 +275,7 @@ function gen(L){const r=(n,m)=>n+Math.floor(R()*(m-n+1)),pk=A=>A[Math.floor(R()*
  return{q,a,opts:[a,...w].sort(()=>R()-.5)}}
 // state
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));let oy=0,op=.25,oz=14;
-let d=0,lat=0,spd=0,steer=0,boost=0,run=false,paused=false,last=0,cd=0,raceT=0,D=6000,q=null,qCool=0,qT=0,qMax=0,streak=0,best=0,right=0,total=0,msgT=0,tl=0,tr=0,rank=1,dots=[];
+let d=0,lat=0,spd=0,steer=0,boost=0,run=false,paused=false,last=0,cd=0,raceT=0,D=6000,q=null,qCool=0,qT=0,qMax=0,streak=0,best=0,right=0,total=0,msgT=0,tl=0,tr=0,rank=1,dots=[],cheer=.2,crowdT=0,fr=0;
 const keys={},tc={l:0,r:0,g:0,b:0};
 const fmt=t=>Math.floor(t/60)+':'+String(Math.floor(t%60)).padStart(2,'0');
 function flash(t,c){const m=$('msg');m.textContent=t;m.style.color=c;m.style.opacity=1;msgT=1.4;m.style.animation='none';void m.offsetWidth;m.style.animation='pop .3s ease-out'}
@@ -355,9 +378,12 @@ function loop(now){requestAnimationFrame(loop);const dt=paused?0:Math.min(.05,(n
   const m=n%2?cR:cW;g.userData.a.material=m;g.userData.b.material=m;g.userData.d.visible=false;g.userData.ad.forEach(x=>{x.material=ADM[((n%4)+4)%4]})});
  const tb=Math.floor(d/14)-(S.cam===3?7:2);
  trees.forEach((t,i)=>{const n=tb+(((i-tb)%34)+34)%34,s=n*14,h=Math.abs(Math.sin(n*127.1)*43758)%1,side=Math.abs(Math.sin(n*311.7)*43758)%1>.5?1:-1;
-  t.position.set(curve(s)+side*(17+h*16),0,-s);t.scale.setScalar(.8+h*.7);t.visible=(!!S.gfx||n%2===0)&&s%150>14&&s%150<136});
- const sb=Math.floor(d/150)-1;
- stands.forEach((g,j)=>{const n=sb+(((j-sb)%5)+5)%5,s=n*150,sd=n%2?1:-1;g.position.set(curve(s)+sd*(W/2+8.5),0,-s);g.rotation.y=-Math.atan(d1(s))+(sd<0?Math.PI:0);g.visible=n>0});
+  t.position.set(curve(s)+side*(31+h*14),0,-s);t.scale.setScalar(.8+h*.7);t.visible=(!!S.gfx||n%2===0)});
+ const sb=Math.floor((d-70)/SL);
+ stands.forEach((g,j)=>{const sd=j%2?1:-1,n=sb+((((j>>1)-sb)%SK)+SK)%SK,s=n*SL+SL/2;
+  g.position.set(curve(s)+sd*(W/2+8.5),0,-s);g.rotation.y=-Math.atan(d1(s))+(sd<0?Math.PI:0);g.userData.s=s;g.visible=s>0&&s<D+50});
+ crowdT+=dt;cheer+=((d>=D||boost>0?1:run?.3:.2)-cheer)*Math.min(1,dt*3);
+ if(S.gfx||++fr%3===0){const rg=S.gfx?110:70;crowds.forEach(c=>{if(c.g.visible&&Math.abs(c.g.userData.s-d)<rg)poseCrowd(c,crowdT,cheer)})}
  car.position.set(curve(d)+lat,0,-d);car.rotation.y=-Math.atan(d1(d))-steer*.3;car.rotation.z=-steer*.04;
  rv.forEach(r=>{if(r.g.visible){r.g.position.set(curve(r.d)+r.lat,0,-r.d);r.g.rotation.y=-Math.atan(d1(r.d))}});
  if(S.cam===3){
